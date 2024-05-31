@@ -4,7 +4,7 @@
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=SonarSource_gh-action_jira-create&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=SonarSource_gh-action_jira-create)
 [![.github/workflows/it-test.yml](https://github.com/SonarSource/gh-action_jira-create/actions/workflows/it-test.yml/badge.svg)](https://github.com/SonarSource/gh-action_jira-create/actions/workflows/it-test.yml)
 
-Create jira ticket
+Create Jira ticket
 
 > Note
 > This is a wrapper for GitHub action [atlassian/gajira-create](https://github.com/atlassian/gajira-create?tab=readme-ov-file)
@@ -60,8 +60,8 @@ steps:
 
 This project is using [Semantic Versioning](https://semver.org/).
 
-The `master` branch shall not be referenced by end-users,
-please use tags instead and [Renovate](https://docs.renovatebot.com/) or
+The `master` branch shall not be referenced by end-users.
+Please use tags instead and [Renovate](https://docs.renovatebot.com/) or
 [Dependabot](https://docs.github.com/en/code-security/dependabot) to stay up to date.
 
 ## Contribute
