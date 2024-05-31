@@ -1,0 +1,268 @@
+name: IT Tests
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  id-token: write
+
+jobs:
+
+  it-tests-use-only-required-input-values:
+    name: "IT Test - given only required inputs values should create a new issue successfully"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Retrieve Jira sandbox secrets
+        id: vault-jira-sandbox-secrets
+        uses: SonarSource/vault-action-wrapper@d0877ce7085bc313bd7a7b99c4e4489d42fb40e1 # tag=3.0.0
+        with:
+          secrets: |
+            operations/team/re/kv/data/jira-sandbox url | jira_url;
+            operations/team/re/kv/data/jira-sandbox user | jira_user;
+            operations/team/re/kv/data/jira-sandbox password | jira_password;
+      - name: Setup jira cli
+        uses: atlassian/gajira-cli@7b8487d76cd88bf5d50ba00c6cca6edff1ddd507 # v3
+        with:
+          version: 1.0.27
+      - name: Login
+        uses: atlassian/gajira-login@v3
+        env:
+          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
+          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
+          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
+      - name: Given the gh-action is used with only required inputs
+        id: test-data
+        uses: ./
+        with:
+          project: "BUILD"
+          issuetype: "Task"
+          summary: "[gh-action_jira-create] IT Test only required input fields - ${{github.run_id}}"
+      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+        name: Then outputs.issue value must be present and start with BUILD
+        with:
+          expected: BUILD-
+          actual: ${{ steps.test-data.outputs.issue }}
+          comparison: startsWith
+
+  it-tests-check-all-inputs:
+    name: "IT Test - given all inputs values are provided, they should be inserted correctly within the issue"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Retrieve Jira sandbox secrets
+        id: vault-jira-sandbox-secrets
+        uses: SonarSource/vault-action-wrapper@d0877ce7085bc313bd7a7b99c4e4489d42fb40e1 # tag=3.0.0
+        with:
+          secrets: |
+            operations/team/re/kv/data/jira-sandbox url | jira_url;
+            operations/team/re/kv/data/jira-sandbox user | jira_user;
+            operations/team/re/kv/data/jira-sandbox password | jira_password;
+      - name: Setup jira cli
+        uses: atlassian/gajira-cli@7b8487d76cd88bf5d50ba00c6cca6edff1ddd507 # v3
+        with:
+          version: 1.0.27
+      - name: Login
+        uses: atlassian/gajira-login@v3
+        env:
+          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
+          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
+          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
+      - name: Given the gh-action is used correctly with all available inputs
+        id: test-data
+        uses: ./
+        with:
+          project: "BUILD"
+          issuetype: "Task"
+          summary: "[gh-action_jira-create] IT Test all input fields correctly filled - ${{github.run_id}}"
+          description: "This is a generated Jira issue used by gh-action_jira-create integrations test. Please ignore it."
+          fields: |
+            {
+              "priority": {"name": "Normal"}
+            }
+
+      - name: Retrieve created Jira issue metadata
+        id: jira-content
+        run: |
+          set +e
+          OUTPUT=$(jira view ${{ steps.test-data.outputs.issue }} -t debug)
+          STATUS=$?
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          echo "$OUTPUT" >> dump-jira-exec.log
+          {
+            echo 'json_payload<<EOF'
+            cat dump-jira-exec.log
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+        env:
+          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
+          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
+          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
+
+      - name: "Dump Jira issue payload"
+        run: cat dump-jira-exec.log
+
+      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+        name: Then the Jira command to extract ticket details should have run smoothly
+        with:
+          expected: 0
+          actual: ${{ steps.jira-content.outputs.status }}
+          comparison: exact
+
+      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+        name: Then the issue description should match what is given as input
+        with:
+          expected: "This is a generated Jira issue used by gh-action_jira-create integrations test. Please ignore it."
+          actual: ${{ fromJSON(steps.jira-content.outputs.json_payload).fields.description }}
+          comparison: exact
+
+      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+        name: Then the issue summary should match what is given as input
+        with:
+          expected: "[gh-action_jira-create] IT Test all input fields correctly filled - "
+          actual: ${{ fromJSON(steps.jira-content.outputs.json_payload).fields.summary }}
+          comparison: startsWith
+
+      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+        name: Then the issue status should be Open
+        with:
+          expected: "Open"
+          actual: ${{ fromJSON(steps.jira-content.outputs.json_payload).fields.status.name }}
+          comparison: exact
+
+      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+        name: Then the issue priority should match what is given as input
+        with:
+          expected: "Normal"
+          actual: ${{ fromJSON(steps.jira-content.outputs.json_payload).fields.priority.name }}
+          comparison: exact
+
+      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+        name: Then the issue type should match what is given as input
+        with:
+          expected: "Task"
+          actual: ${{ fromJSON(steps.jira-content.outputs.json_payload).fields.issuetype.name }}
+          comparison: exact
+
+      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+        name: Then the issue project should match what is given as input
+        with:
+          expected: "BUILD"
+          actual: ${{ fromJSON(steps.jira-content.outputs.json_payload).fields.project.key }}
+          comparison: exact
+
+      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+        name: Then the issue reporter should match tech user
+        with:
+          expected: "JIRA Tech User Release Engineers"
+          actual: ${{ fromJSON(steps.jira-content.outputs.json_payload).fields.reporter.displayName }}
+          comparison: exact
+
+      - name: Mark test ticket as resolved
+        run: jira resolve ${{ steps.test-data.outputs.issue }}
+        env:
+          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
+          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
+          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
+
+      - name: Mark test ticket as closed
+        run: jira close ${{ steps.test-data.outputs.issue }}
+        env:
+          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
+          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
+          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
+
+  it-tests-description-markdown-to-jira-markup-conversion:
+    name: "IT Test - given description contains markdown, it should be converted correctly to Jira Markup"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Retrieve Jira sandbox secrets
+        id: vault-jira-sandbox-secrets
+        uses: SonarSource/vault-action-wrapper@d0877ce7085bc313bd7a7b99c4e4489d42fb40e1 # tag=3.0.0
+        with:
+          secrets: |
+            operations/team/re/kv/data/jira-sandbox url | jira_url;
+            operations/team/re/kv/data/jira-sandbox user | jira_user;
+            operations/team/re/kv/data/jira-sandbox password | jira_password;
+      - name: Setup jira cli
+        uses: atlassian/gajira-cli@7b8487d76cd88bf5d50ba00c6cca6edff1ddd507 # v3
+        with:
+          version: 1.0.27
+      - name: Login
+        uses: atlassian/gajira-login@v3
+        env:
+          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
+          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
+          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
+      - name: Given the gh-action is used correctly with a Markdown description
+        id: test-data
+        uses: ./
+        with:
+          project: "BUILD"
+          issuetype: "Task"
+          summary: "[gh-action_jira-create] IT Test Markdown description - ${{github.run_id}}"
+          description: "**bold** *italic*"
+
+      - name: Retrieve created Jira issue metadata
+        id: jira-content
+        run: |
+          set +e
+          OUTPUT=$(jira view ${{ steps.test-data.outputs.issue }} -t debug)
+          STATUS=$?
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          echo "$OUTPUT" >> dump-jira-exec.log
+          {
+            echo 'json_payload<<EOF'
+            cat dump-jira-exec.log
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+        env:
+          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
+          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
+          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
+      - name: "Dump Jira issue payload"
+        run: cat dump-jira-exec.log
+
+      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+        name: Then the Jira command to extract ticket details should have run smoothly
+        with:
+          expected: 0
+          actual: ${{ steps.jira-content.outputs.status }}
+          comparison: exact
+
+      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+        name: Then the issue description should be converted to Jira markdown
+        with:
+          expected: "*bold* _italic_"
+          actual: ${{ fromJSON(steps.jira-content.outputs.json_payload).fields.description }}
+          comparison: exact
+
+      - name: Mark test ticket as resolved
+        run: jira resolve ${{ steps.test-data.outputs.issue }}
+        env:
+          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
+          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
+          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
+
+      - name: Mark test ticket as closed
+        run: jira close ${{ steps.test-data.outputs.issue }}
+        env:
+          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
+          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
+          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
+
+  it-tests:
+    name: "All IT Tests have to pass"
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      # Add your tests here so that they prevent the merge of broken changes
+      - it-tests-use-only-required-input-values
+      - it-tests-check-all-inputs
+      - it-tests-description-markdown-to-jira-markup-conversion
+    steps:
+      - uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # v1.2.2
+        with:
+          jobs: ${{ toJSON(needs) }}
