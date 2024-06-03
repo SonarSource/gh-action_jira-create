@@ -26,7 +26,7 @@ jobs:
         with:
           version: 1.0.27
       - name: Login
-        uses: atlassian/gajira-login@v3
+        uses: atlassian/gajira-login@ca13f8850ea309cf44a6e4e0c49d9aa48ac3ca4c # v3
         env:
           JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
           JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
@@ -63,7 +63,7 @@ jobs:
         with:
           version: 1.0.27
       - name: Login
-        uses: atlassian/gajira-login@v3
+        uses: atlassian/gajira-login@ca13f8850ea309cf44a6e4e0c49d9aa48ac3ca4c # v3
         env:
           JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
           JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
@@ -190,7 +190,7 @@ jobs:
         with:
           version: 1.0.27
       - name: Login
-        uses: atlassian/gajira-login@v3
+        uses: atlassian/gajira-login@ca13f8850ea309cf44a6e4e0c49d9aa48ac3ca4c # v3
         env:
           JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
           JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
