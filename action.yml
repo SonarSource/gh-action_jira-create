@@ -24,7 +24,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - uses: peter-evans/jira2md@05e674767734625c20b91e7a17fd986152a7bb99 # v1.1.0
+    - uses: peter-evans/jira2md@71f20480efa44538956efcce4f764e7e8f959781 # v2.0.0
       id: md2jira
       with:
         input-text: ${{ inputs.description }}
