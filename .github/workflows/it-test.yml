@@ -86,6 +86,7 @@ jobs:
         id: jira-content
         run: |
           set +e
+          sleep 5 # Give some time to the Jira automation to transit issue Open -> Todo
           OUTPUT=$(jira view ${{ steps.test-data.outputs.issue }} -t debug)
           STATUS=$?
           echo "status=$STATUS" >> "$GITHUB_OUTPUT"
@@ -125,9 +126,9 @@ jobs:
           comparison: startsWith
 
       - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
-        name: Then the issue status should be Open
+        name: Then the issue status should be To Do
         with:
-          expected: "Open"
+          expected: "To Do"
           actual: ${{ fromJSON(steps.jira-content.outputs.json_payload).fields.status.name }}
           comparison: exact
 
@@ -209,6 +210,7 @@ jobs:
         id: jira-content
         run: |
           set +e
+          sleep 5 # Give some time to the Jira automation to transit issue Open -> Todo
           OUTPUT=$(jira view ${{ steps.test-data.outputs.issue }} -t debug)
           STATUS=$?
           echo "status=$STATUS" >> "$GITHUB_OUTPUT"
