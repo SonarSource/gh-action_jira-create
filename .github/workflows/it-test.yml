@@ -31,7 +31,7 @@ jobs:
           JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
           JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
           JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
       - name: Given the gh-action is used with only required inputs
         id: test-data
         uses: ./
@@ -68,7 +68,7 @@ jobs:
           JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
           JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
           JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
       - name: Given the gh-action is used correctly with all available inputs
         id: test-data
         uses: ./
@@ -196,7 +196,7 @@ jobs:
           JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
           JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
           JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
       - name: Given the gh-action is used correctly with a Markdown description
         id: test-data
         uses: ./
