@@ -15,7 +15,7 @@ jobs:
     steps:
       - name: Retrieve Jira sandbox secrets
         id: vault-jira-sandbox-secrets
-        uses: SonarSource/vault-action-wrapper@3996073b47b49ac5c58c750d27ab4edf469401c8 # 3.0.1
+        uses: SonarSource/vault-action-wrapper@d6d745ffdbc82b040df839b903bc33b5592cd6b0 # 3.0.2
         with:
           secrets: |
             operations/team/re/kv/data/jira-sandbox url | jira_url;
@@ -52,7 +52,7 @@ jobs:
     steps:
       - name: Retrieve Jira sandbox secrets
         id: vault-jira-sandbox-secrets
-        uses: SonarSource/vault-action-wrapper@3996073b47b49ac5c58c750d27ab4edf469401c8 # 3.0.1
+        uses: SonarSource/vault-action-wrapper@d6d745ffdbc82b040df839b903bc33b5592cd6b0 # 3.0.2
         with:
           secrets: |
             operations/team/re/kv/data/jira-sandbox url | jira_url;
@@ -180,7 +180,7 @@ jobs:
     steps:
       - name: Retrieve Jira sandbox secrets
         id: vault-jira-sandbox-secrets
-        uses: SonarSource/vault-action-wrapper@3996073b47b49ac5c58c750d27ab4edf469401c8 # 3.0.1
+        uses: SonarSource/vault-action-wrapper@d6d745ffdbc82b040df839b903bc33b5592cd6b0 # 3.0.2
         with:
           secrets: |
             operations/team/re/kv/data/jira-sandbox url | jira_url;
