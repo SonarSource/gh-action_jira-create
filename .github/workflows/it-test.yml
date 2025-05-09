@@ -11,7 +11,7 @@ jobs:
 
   it-tests-use-only-required-input-values:
     name: "IT Test - given only required inputs values should create a new issue successfully"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-large
     steps:
       - name: Retrieve Jira sandbox secrets
         id: vault-jira-sandbox-secrets
@@ -48,7 +48,7 @@ jobs:
 
   it-tests-check-all-inputs:
     name: "IT Test - given all inputs values are provided, they should be inserted correctly within the issue"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-large
     steps:
       - name: Retrieve Jira sandbox secrets
         id: vault-jira-sandbox-secrets
@@ -176,7 +176,7 @@ jobs:
 
   it-tests-description-markdown-to-jira-markup-conversion:
     name: "IT Test - given description contains markdown, it should be converted correctly to Jira Markup"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-large
     steps:
       - name: Retrieve Jira sandbox secrets
         id: vault-jira-sandbox-secrets
@@ -257,7 +257,7 @@ jobs:
 
   it-tests:
     name: "All IT Tests have to pass"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-large
     if: always()
     needs:
       # Add your tests here so that they prevent the merge of broken changes
