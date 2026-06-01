@@ -31,7 +31,7 @@ jobs:
           JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
           JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
           JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Given the gh-action is used with only required inputs
         id: test-data
         uses: ./
@@ -39,7 +39,7 @@ jobs:
           project: "BUILD"
           issuetype: "Feature"
           summary: "[gh-action_jira-create] IT Test only required input fields - ${{github.run_id}}"
-      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+      - uses: nick-fields/assert-action@22dd2a66ef733fe92022d3704183ac007463eecb # v3.0.0
         name: Then outputs.issue value must be present and start with BUILD
         with:
           expected: BUILD-
@@ -68,7 +68,7 @@ jobs:
           JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
           JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
           JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Given the gh-action is used correctly with all available inputs
         id: test-data
         uses: ./
@@ -104,56 +104,56 @@ jobs:
       - name: "Dump Jira issue payload"
         run: cat dump-jira-exec.log
 
-      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+      - uses: nick-fields/assert-action@22dd2a66ef733fe92022d3704183ac007463eecb # v3.0.0
         name: Then the Jira command to extract ticket details should have run smoothly
         with:
           expected: 0
           actual: ${{ steps.jira-content.outputs.status }}
           comparison: exact
 
-      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+      - uses: nick-fields/assert-action@22dd2a66ef733fe92022d3704183ac007463eecb # v3.0.0
         name: Then the issue description should match what is given as input
         with:
           expected: "This is a generated Jira issue used by gh-action_jira-create integrations test. Please ignore it."
           actual: ${{ fromJSON(steps.jira-content.outputs.json_payload).fields.description }}
           comparison: exact
 
-      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+      - uses: nick-fields/assert-action@22dd2a66ef733fe92022d3704183ac007463eecb # v3.0.0
         name: Then the issue summary should match what is given as input
         with:
           expected: "[gh-action_jira-create] IT Test all input fields correctly filled - "
           actual: ${{ fromJSON(steps.jira-content.outputs.json_payload).fields.summary }}
           comparison: startsWith
 
-      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+      - uses: nick-fields/assert-action@22dd2a66ef733fe92022d3704183ac007463eecb # v3.0.0
         name: Then the issue status should be Open
         with:
           expected: "Open"
           actual: ${{ fromJSON(steps.jira-content.outputs.json_payload).fields.status.name }}
           comparison: exact
 
-      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+      - uses: nick-fields/assert-action@22dd2a66ef733fe92022d3704183ac007463eecb # v3.0.0
         name: Then the issue priority should match what is given as input
         with:
           expected: "Normal"
           actual: ${{ fromJSON(steps.jira-content.outputs.json_payload).fields.priority.name }}
           comparison: exact
 
-      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+      - uses: nick-fields/assert-action@22dd2a66ef733fe92022d3704183ac007463eecb # v3.0.0
         name: Then the issue type should match what is given as input
         with:
           expected: "Feature"
           actual: ${{ fromJSON(steps.jira-content.outputs.json_payload).fields.issuetype.name }}
           comparison: exact
 
-      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+      - uses: nick-fields/assert-action@22dd2a66ef733fe92022d3704183ac007463eecb # v3.0.0
         name: Then the issue project should match what is given as input
         with:
           expected: "BUILD"
           actual: ${{ fromJSON(steps.jira-content.outputs.json_payload).fields.project.key }}
           comparison: exact
 
-      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+      - uses: nick-fields/assert-action@22dd2a66ef733fe92022d3704183ac007463eecb # v3.0.0
         name: Then the issue reporter should match tech user
         with:
           expected: "JIRA Tech User Release Engineers"
@@ -196,7 +196,7 @@ jobs:
           JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
           JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
           JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Given the gh-action is used correctly with a Markdown description
         id: test-data
         uses: ./
@@ -227,14 +227,14 @@ jobs:
       - name: "Dump Jira issue payload"
         run: cat dump-jira-exec.log
 
-      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+      - uses: nick-fields/assert-action@22dd2a66ef733fe92022d3704183ac007463eecb # v3.0.0
         name: Then the Jira command to extract ticket details should have run smoothly
         with:
           expected: 0
           actual: ${{ steps.jira-content.outputs.status }}
           comparison: exact
 
-      - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
+      - uses: nick-fields/assert-action@22dd2a66ef733fe92022d3704183ac007463eecb # v3.0.0
         name: Then the issue description should be converted to Jira markdown
         with:
           expected: "*bold* _italic_"
