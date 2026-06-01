@@ -37,7 +37,7 @@ jobs:
         uses: ./
         with:
           project: "BUILD"
-          issuetype: "Task"
+          issuetype: "Feature"
           summary: "[gh-action_jira-create] IT Test only required input fields - ${{github.run_id}}"
       - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
         name: Then outputs.issue value must be present and start with BUILD
@@ -74,7 +74,7 @@ jobs:
         uses: ./
         with:
           project: "BUILD"
-          issuetype: "Task"
+          issuetype: "Feature"
           summary: "[gh-action_jira-create] IT Test all input fields correctly filled - ${{github.run_id}}"
           description: "This is a generated Jira issue used by gh-action_jira-create integrations test. Please ignore it."
           fields: |
@@ -142,7 +142,7 @@ jobs:
       - uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2
         name: Then the issue type should match what is given as input
         with:
-          expected: "Task"
+          expected: "Feature"
           actual: ${{ fromJSON(steps.jira-content.outputs.json_payload).fields.issuetype.name }}
           comparison: exact
 
@@ -202,7 +202,7 @@ jobs:
         uses: ./
         with:
           project: "BUILD"
-          issuetype: "Task"
+          issuetype: "Feature"
           summary: "[gh-action_jira-create] IT Test Markdown description - ${{github.run_id}}"
           description: "**bold** *italic*"
 
