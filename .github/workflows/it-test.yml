@@ -88,11 +88,12 @@ jobs:
           status=0
           if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then status=1; fi
           echo "status=$status" >> "$GITHUB_OUTPUT"
-          cp "$body" dump-jira-exec.log
+          jq . "$body" > dump-jira-exec.log 2>/dev/null || cp "$body" dump-jira-exec.log
           {
             echo 'json_payload<<EOF'
             cat dump-jira-exec.log
-            echo EOF
+            echo ""
+            echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
       - name: "Dump Jira issue payload"
@@ -225,11 +226,12 @@ jobs:
           status=0
           if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then status=1; fi
           echo "status=$status" >> "$GITHUB_OUTPUT"
-          cp "$body" dump-jira-exec.log
+          jq . "$body" > dump-jira-exec.log 2>/dev/null || cp "$body" dump-jira-exec.log
           {
             echo 'json_payload<<EOF'
             cat dump-jira-exec.log
-            echo EOF
+            echo ""
+            echo 'EOF'
           } >> "$GITHUB_OUTPUT"
       - name: "Dump Jira issue payload"
         run: cat dump-jira-exec.log
