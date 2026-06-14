@@ -31,10 +31,61 @@ runs:
         mode: md2jira
     - name: Create Jira issue
       id: create
-      uses: atlassian/gajira-create@1ff0b6bd115a780592b47bfbb63fc4629132e6ec # v3
-      with:
-        project: ${{ inputs.project }}
-        issuetype: ${{ inputs.issuetype }}
-        summary: ${{ inputs.summary }}
-        description: ${{ steps.md2jira.outputs.output-text }}
-        fields: ${{ inputs.fields }}
+      shell: bash
+      env:
+        ISSUE_PROJECT: ${{ inputs.project }}
+        ISSUE_TYPE: ${{ inputs.issuetype }}
+        ISSUE_SUMMARY: ${{ inputs.summary }}
+        ISSUE_DESCRIPTION: ${{ steps.md2jira.outputs.output-text }}
+        ISSUE_FIELDS: ${{ inputs.fields }}
+      run: |
+        set -euo pipefail
+
+        # Credentials are read from the environment (same variable names the now-deprecated
+        # atlassian/gajira-login consumed). Callers must export them before this action runs.
+        : "${JIRA_BASE_URL:?Set JIRA_BASE_URL in the environment before calling gh-action_jira-create}"
+        : "${JIRA_USER_EMAIL:?Set JIRA_USER_EMAIL in the environment before calling gh-action_jira-create}"
+        : "${JIRA_API_TOKEN:?Set JIRA_API_TOKEN in the environment before calling gh-action_jira-create}"
+
+        extra_fields="${ISSUE_FIELDS:-}"
+        if [ -z "$extra_fields" ]; then
+          extra_fields='{}'
+        fi
+
+        # Build the request body and merge any caller-provided extra fields.
+        # REST API v2 is used on purpose: it accepts the Jira wiki-markup string produced by
+        # jira2md as the "description" (v3 would require Atlassian Document Format instead).
+        payload="$(jq -n \
+          --arg project "$ISSUE_PROJECT" \
+          --arg issuetype "$ISSUE_TYPE" \
+          --arg summary "$ISSUE_SUMMARY" \
+          --arg description "$ISSUE_DESCRIPTION" \
+          --argjson extra "$extra_fields" \
+          '{fields: (
+              {project: {key: $project}, issuetype: {name: $issuetype}, summary: $summary}
+              + (if $description == "" then {} else {description: $description} end)
+              + $extra
+          )}')"
+
+        response_body="$(mktemp)"
+        http_code="$(curl --silent --show-error \
+          --output "$response_body" --write-out '%{http_code}' \
+          --request POST \
+          --user "${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}" \
+          --header 'Content-Type: application/json' \
+          --data "$payload" \
+          "${JIRA_BASE_URL%/}/rest/api/2/issue")"
+
+        if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+          echo "::error::Jira issue creation failed (HTTP ${http_code}): $(cat "$response_body")"
+          exit 1
+        fi
+
+        issue_key="$(jq -r '.key // empty' < "$response_body")"
+        if [ -z "$issue_key" ]; then
+          echo "::error::Jira response did not contain an issue key: $(cat "$response_body")"
+          exit 1
+        fi
+
+        echo "Created Jira issue: ${issue_key}"
+        echo "issue=${issue_key}" >> "$GITHUB_OUTPUT"

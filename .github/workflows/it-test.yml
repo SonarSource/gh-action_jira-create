@@ -21,20 +21,14 @@ jobs:
             operations/team/re/kv/data/jira-sandbox url | jira_url;
             operations/team/re/kv/data/jira-sandbox user | jira_user;
             operations/team/re/kv/data/jira-sandbox password | jira_password;
-      - name: Setup jira cli
-        uses: atlassian/gajira-cli@7b8487d76cd88bf5d50ba00c6cca6edff1ddd507 # v3
-        with:
-          version: 1.0.27
-      - name: Login
-        uses: atlassian/gajira-login@ca13f8850ea309cf44a6e4e0c49d9aa48ac3ca4c # v3
-        env:
-          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
-          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
-          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Given the gh-action is used with only required inputs
         id: test-data
         uses: ./
+        env:
+          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
+          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
+          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
         with:
           project: "BUILD"
           issuetype: "Feature"
@@ -58,20 +52,14 @@ jobs:
             operations/team/re/kv/data/jira-sandbox url | jira_url;
             operations/team/re/kv/data/jira-sandbox user | jira_user;
             operations/team/re/kv/data/jira-sandbox password | jira_password;
-      - name: Setup jira cli
-        uses: atlassian/gajira-cli@7b8487d76cd88bf5d50ba00c6cca6edff1ddd507 # v3
-        with:
-          version: 1.0.27
-      - name: Login
-        uses: atlassian/gajira-login@ca13f8850ea309cf44a6e4e0c49d9aa48ac3ca4c # v3
-        env:
-          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
-          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
-          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Given the gh-action is used correctly with all available inputs
         id: test-data
         uses: ./
+        env:
+          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
+          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
+          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
         with:
           project: "BUILD"
           issuetype: "Feature"
@@ -84,28 +72,34 @@ jobs:
 
       - name: Retrieve created Jira issue metadata
         id: jira-content
+        env:
+          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
+          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
+          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
+          ISSUE_KEY: ${{ steps.test-data.outputs.issue }}
         run: |
           set +e
           sleep 5 # Give some time to the Jira automation to transit issue Open -> Todo
-          OUTPUT=$(jira view ${{ steps.test-data.outputs.issue }} -t debug)
-          STATUS=$?
-          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
-          echo "$OUTPUT" >> dump-jira-exec.log
+          body="$(mktemp)"
+          code="$(curl --silent --show-error --output "$body" --write-out '%{http_code}' \
+            --user "${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}" \
+            --header 'Accept: application/json' \
+            "${JIRA_BASE_URL%/}/rest/api/2/issue/${ISSUE_KEY}")"
+          status=0
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then status=1; fi
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          cp "$body" dump-jira-exec.log
           {
             echo 'json_payload<<EOF'
             cat dump-jira-exec.log
             echo EOF
           } >> "$GITHUB_OUTPUT"
-        env:
-          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
-          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
-          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
 
       - name: "Dump Jira issue payload"
         run: cat dump-jira-exec.log
 
       - uses: nick-fields/assert-action@22dd2a66ef733fe92022d3704183ac007463eecb # v3.0.0
-        name: Then the Jira command to extract ticket details should have run smoothly
+        name: Then the Jira request to extract ticket details should have run smoothly
         with:
           expected: 0
           actual: ${{ steps.jira-content.outputs.status }}
@@ -160,19 +154,32 @@ jobs:
           actual: ${{ fromJSON(steps.jira-content.outputs.json_payload).fields.reporter.displayName }}
           comparison: exact
 
-      - name: Mark test ticket as resolved
-        run: jira resolve ${{ steps.test-data.outputs.issue }}
+      - name: Resolve and close the test ticket
+        if: always() && steps.test-data.outputs.issue != ''
         env:
           JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
           JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
           JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
-
-      - name: Mark test ticket as closed
-        run: jira close ${{ steps.test-data.outputs.issue }}
-        env:
-          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
-          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
-          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
+          ISSUE_KEY: ${{ steps.test-data.outputs.issue }}
+        run: |
+          set +e
+          # Best-effort cleanup of the sandbox ticket (non-fatal): drive it to a terminal state
+          # by name, regardless of the exact workflow transition ids.
+          transition() {
+            tid="$(curl --silent --user "${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}" \
+              --header 'Accept: application/json' \
+              "${JIRA_BASE_URL%/}/rest/api/2/issue/${ISSUE_KEY}/transitions" \
+              | jq -r --arg n "$1" '.transitions[] | select(.name | ascii_downcase == ($n | ascii_downcase)) | .id' | head -n1)"
+            if [ -n "${tid}" ] && [ "${tid}" != "null" ]; then
+              curl --silent --output /dev/null --user "${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}" \
+                --header 'Content-Type: application/json' --request POST \
+                --data "{\"transition\":{\"id\":\"${tid}\"}}" \
+                "${JIRA_BASE_URL%/}/rest/api/2/issue/${ISSUE_KEY}/transitions"
+            fi
+          }
+          for name in "Resolve Issue" "Resolve" "Done" "Close Issue" "Close"; do
+            transition "${name}"
+          done
 
   it-tests-description-markdown-to-jira-markup-conversion:
     name: "IT Test - given description contains markdown, it should be converted correctly to Jira Markup"
@@ -186,20 +193,14 @@ jobs:
             operations/team/re/kv/data/jira-sandbox url | jira_url;
             operations/team/re/kv/data/jira-sandbox user | jira_user;
             operations/team/re/kv/data/jira-sandbox password | jira_password;
-      - name: Setup jira cli
-        uses: atlassian/gajira-cli@7b8487d76cd88bf5d50ba00c6cca6edff1ddd507 # v3
-        with:
-          version: 1.0.27
-      - name: Login
-        uses: atlassian/gajira-login@ca13f8850ea309cf44a6e4e0c49d9aa48ac3ca4c # v3
-        env:
-          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
-          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
-          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Given the gh-action is used correctly with a Markdown description
         id: test-data
         uses: ./
+        env:
+          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
+          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
+          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
         with:
           project: "BUILD"
           issuetype: "Feature"
@@ -208,27 +209,33 @@ jobs:
 
       - name: Retrieve created Jira issue metadata
         id: jira-content
+        env:
+          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
+          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
+          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
+          ISSUE_KEY: ${{ steps.test-data.outputs.issue }}
         run: |
           set +e
           sleep 5 # Give some time to the Jira automation to transit issue Open -> Todo
-          OUTPUT=$(jira view ${{ steps.test-data.outputs.issue }} -t debug)
-          STATUS=$?
-          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
-          echo "$OUTPUT" >> dump-jira-exec.log
+          body="$(mktemp)"
+          code="$(curl --silent --show-error --output "$body" --write-out '%{http_code}' \
+            --user "${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}" \
+            --header 'Accept: application/json' \
+            "${JIRA_BASE_URL%/}/rest/api/2/issue/${ISSUE_KEY}")"
+          status=0
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then status=1; fi
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          cp "$body" dump-jira-exec.log
           {
             echo 'json_payload<<EOF'
             cat dump-jira-exec.log
             echo EOF
           } >> "$GITHUB_OUTPUT"
-        env:
-          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
-          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
-          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
       - name: "Dump Jira issue payload"
         run: cat dump-jira-exec.log
 
       - uses: nick-fields/assert-action@22dd2a66ef733fe92022d3704183ac007463eecb # v3.0.0
-        name: Then the Jira command to extract ticket details should have run smoothly
+        name: Then the Jira request to extract ticket details should have run smoothly
         with:
           expected: 0
           actual: ${{ steps.jira-content.outputs.status }}
@@ -241,19 +248,30 @@ jobs:
           actual: ${{ fromJSON(steps.jira-content.outputs.json_payload).fields.description }}
           comparison: exact
 
-      - name: Mark test ticket as resolved
-        run: jira resolve ${{ steps.test-data.outputs.issue }}
+      - name: Resolve and close the test ticket
+        if: always() && steps.test-data.outputs.issue != ''
         env:
           JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
           JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
           JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
-
-      - name: Mark test ticket as closed
-        run: jira close ${{ steps.test-data.outputs.issue }}
-        env:
-          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
-          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
-          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
+          ISSUE_KEY: ${{ steps.test-data.outputs.issue }}
+        run: |
+          set +e
+          transition() {
+            tid="$(curl --silent --user "${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}" \
+              --header 'Accept: application/json' \
+              "${JIRA_BASE_URL%/}/rest/api/2/issue/${ISSUE_KEY}/transitions" \
+              | jq -r --arg n "$1" '.transitions[] | select(.name | ascii_downcase == ($n | ascii_downcase)) | .id' | head -n1)"
+            if [ -n "${tid}" ] && [ "${tid}" != "null" ]; then
+              curl --silent --output /dev/null --user "${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}" \
+                --header 'Content-Type: application/json' --request POST \
+                --data "{\"transition\":{\"id\":\"${tid}\"}}" \
+                "${JIRA_BASE_URL%/}/rest/api/2/issue/${ISSUE_KEY}/transitions"
+            fi
+          }
+          for name in "Resolve Issue" "Resolve" "Done" "Close Issue" "Close"; do
+            transition "${name}"
+          done
 
   it-tests:
     name: "All IT Tests have to pass"
