@@ -13,6 +13,11 @@ Create Jira ticket
 > It previously wrapped [atlassian/gajira-create](https://github.com/atlassian/gajira-create),
 > which was dropped because it is stuck on Node 16/20 and unmaintained (see BUILD-11506).
 
+## Requirements
+
+The action runs a small Bash script, so the runner must have **`bash`**, **`curl`**, and **`jq`**
+available in `PATH` (GitHub-hosted Ubuntu runners include them by default).
+
 ## Authentication
 
 The action authenticates against Jira using **three environment variables** that you must set

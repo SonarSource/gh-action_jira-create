@@ -40,6 +40,31 @@ jobs:
           actual: ${{ steps.test-data.outputs.issue }}
           comparison: startsWith
 
+      - name: Resolve and close the test ticket
+        if: always() && steps.test-data.outputs.issue != ''
+        env:
+          JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
+          JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
+          JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
+          ISSUE_KEY: ${{ steps.test-data.outputs.issue }}
+        run: |
+          set +e
+          transition() {
+            tid="$(curl --silent --connect-timeout 30 --max-time 120 --user "${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}" \
+              --header 'Accept: application/json' \
+              "${JIRA_BASE_URL%/}/rest/api/2/issue/${ISSUE_KEY}/transitions" \
+              | jq -r --arg n "$1" '.transitions[] | select(.name | ascii_downcase == ($n | ascii_downcase)) | .id' | head -n1)"
+            if [ -n "${tid}" ] && [ "${tid}" != "null" ]; then
+              curl --silent --connect-timeout 30 --max-time 120 --output /dev/null --user "${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}" \
+                --header 'Content-Type: application/json' --request POST \
+                --data "{\"transition\":{\"id\":\"${tid}\"}}" \
+                "${JIRA_BASE_URL%/}/rest/api/2/issue/${ISSUE_KEY}/transitions"
+            fi
+          }
+          for name in "Resolve Issue" "Resolve" "Done" "Close Issue" "Close"; do
+            transition "${name}"
+          done
+
   it-tests-check-all-inputs:
     name: "IT Test - given all inputs values are provided, they should be inserted correctly within the issue"
     runs-on: github-ubuntu-latest-s
@@ -81,12 +106,15 @@ jobs:
           set +e
           sleep 5 # Give some time to the Jira automation to transit issue Open -> Todo
           body="$(mktemp)"
-          code="$(curl --silent --show-error --output "$body" --write-out '%{http_code}' \
+          code="$(curl --silent --show-error --connect-timeout 30 --max-time 120 \
+            --output "$body" --write-out '%{http_code}' \
             --user "${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}" \
             --header 'Accept: application/json' \
             "${JIRA_BASE_URL%/}/rest/api/2/issue/${ISSUE_KEY}")"
+          curl_rc=$?
+          code="${code:-0}"
           status=0
-          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then status=1; fi
+          if [ "$curl_rc" -ne 0 ] || [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then status=1; fi
           echo "status=$status" >> "$GITHUB_OUTPUT"
           jq . "$body" > dump-jira-exec.log 2>/dev/null || cp "$body" dump-jira-exec.log
           {
@@ -167,12 +195,12 @@ jobs:
           # Best-effort cleanup of the sandbox ticket (non-fatal): drive it to a terminal state
           # by name, regardless of the exact workflow transition ids.
           transition() {
-            tid="$(curl --silent --user "${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}" \
+            tid="$(curl --silent --connect-timeout 30 --max-time 120 --user "${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}" \
               --header 'Accept: application/json' \
               "${JIRA_BASE_URL%/}/rest/api/2/issue/${ISSUE_KEY}/transitions" \
               | jq -r --arg n "$1" '.transitions[] | select(.name | ascii_downcase == ($n | ascii_downcase)) | .id' | head -n1)"
             if [ -n "${tid}" ] && [ "${tid}" != "null" ]; then
-              curl --silent --output /dev/null --user "${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}" \
+              curl --silent --connect-timeout 30 --max-time 120 --output /dev/null --user "${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}" \
                 --header 'Content-Type: application/json' --request POST \
                 --data "{\"transition\":{\"id\":\"${tid}\"}}" \
                 "${JIRA_BASE_URL%/}/rest/api/2/issue/${ISSUE_KEY}/transitions"
@@ -219,12 +247,15 @@ jobs:
           set +e
           sleep 5 # Give some time to the Jira automation to transit issue Open -> Todo
           body="$(mktemp)"
-          code="$(curl --silent --show-error --output "$body" --write-out '%{http_code}' \
+          code="$(curl --silent --show-error --connect-timeout 30 --max-time 120 \
+            --output "$body" --write-out '%{http_code}' \
             --user "${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}" \
             --header 'Accept: application/json' \
             "${JIRA_BASE_URL%/}/rest/api/2/issue/${ISSUE_KEY}")"
+          curl_rc=$?
+          code="${code:-0}"
           status=0
-          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then status=1; fi
+          if [ "$curl_rc" -ne 0 ] || [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then status=1; fi
           echo "status=$status" >> "$GITHUB_OUTPUT"
           jq . "$body" > dump-jira-exec.log 2>/dev/null || cp "$body" dump-jira-exec.log
           {
@@ -260,12 +291,12 @@ jobs:
         run: |
           set +e
           transition() {
-            tid="$(curl --silent --user "${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}" \
+            tid="$(curl --silent --connect-timeout 30 --max-time 120 --user "${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}" \
               --header 'Accept: application/json' \
               "${JIRA_BASE_URL%/}/rest/api/2/issue/${ISSUE_KEY}/transitions" \
               | jq -r --arg n "$1" '.transitions[] | select(.name | ascii_downcase == ($n | ascii_downcase)) | .id' | head -n1)"
             if [ -n "${tid}" ] && [ "${tid}" != "null" ]; then
-              curl --silent --output /dev/null --user "${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}" \
+              curl --silent --connect-timeout 30 --max-time 120 --output /dev/null --user "${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}" \
                 --header 'Content-Type: application/json' --request POST \
                 --data "{\"transition\":{\"id\":\"${tid}\"}}" \
                 "${JIRA_BASE_URL%/}/rest/api/2/issue/${ISSUE_KEY}/transitions"

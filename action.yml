@@ -41,6 +41,10 @@ runs:
       run: |
         set -euo pipefail
 
+        # This composite action shells out to curl and jq.
+        command -v jq >/dev/null 2>&1 || { echo "::error::jq is required but was not found in PATH"; exit 1; }
+        command -v curl >/dev/null 2>&1 || { echo "::error::curl is required but was not found in PATH"; exit 1; }
+
         # Credentials are read from the environment (same variable names the now-deprecated
         # atlassian/gajira-login consumed). Callers must export them before this action runs.
         : "${JIRA_BASE_URL:?Set JIRA_BASE_URL in the environment before calling gh-action_jira-create}"
@@ -50,6 +54,11 @@ runs:
         extra_fields="${ISSUE_FIELDS:-}"
         if [ -z "$extra_fields" ]; then
           extra_fields='{}'
+        fi
+        # Fail early with a clear message if `fields` is not a JSON object (avoids a cryptic jq error).
+        if ! printf '%s' "$extra_fields" | jq -e 'type == "object"' >/dev/null 2>&1; then
+          echo "::error::inputs.fields must be a valid JSON object, e.g. {\"priority\":{\"name\":\"Normal\"}}"
+          exit 1
         fi
 
         # Build the request body and merge any caller-provided extra fields.
@@ -67,11 +76,19 @@ runs:
               + $extra
           )}')"
 
+        # Pass credentials through a mode-600 curl config file rather than --user, so the API
+        # token is not exposed in the process arguments (visible via `ps`). Cleaned up on exit.
+        curl_cfg="$(mktemp)"
         response_body="$(mktemp)"
+        trap 'rm -f "$curl_cfg" "$response_body"' EXIT
+        chmod 600 "$curl_cfg"
+        printf 'user = "%s:%s"\n' "$JIRA_USER_EMAIL" "$JIRA_API_TOKEN" > "$curl_cfg"
+
         http_code="$(curl --silent --show-error \
+          --connect-timeout 30 --max-time 120 \
+          --config "$curl_cfg" \
           --output "$response_body" --write-out '%{http_code}' \
           --request POST \
-          --user "${JIRA_USER_EMAIL}:${JIRA_API_TOKEN}" \
           --header 'Content-Type: application/json' \
           --data "$payload" \
           "${JIRA_BASE_URL%/}/rest/api/2/issue")"
