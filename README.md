@@ -7,8 +7,30 @@
 Create Jira ticket
 
 > Note
-> This is a wrapper for GitHub action [atlassian/gajira-create](https://github.com/atlassian/gajira-create?tab=readme-ov-file)
-> with some extra features such as Markdown support for issue description.
+> This action creates the issue by calling the Jira Cloud REST API (v2) directly. It keeps
+> Markdown support for the issue description (converted to Jira wiki markup).
+>
+> It previously wrapped [atlassian/gajira-create](https://github.com/atlassian/gajira-create),
+> which was dropped because it is stuck on Node 16/20 and unmaintained (see BUILD-11506).
+
+## Requirements
+
+The action runs a small Bash script, so the runner must have **`bash`**, **`curl`**, and **`jq`**
+available in `PATH` (GitHub-hosted Ubuntu runners include them by default).
+
+## Authentication
+
+The action authenticates against Jira using **three environment variables** that you must set
+on the step (or job). They are the same variables the old `atlassian/gajira-login` consumed:
+
+| Env var | Description |
+|-----------------|-------------------------------------------------|
+| `JIRA_BASE_URL` | Base URL of the Jira instance (e.g. `https://xxx.atlassian.net`) |
+| `JIRA_USER_EMAIL` | Email of the Jira user / token owner |
+| `JIRA_API_TOKEN` | Jira API token (password) for that user |
+
+> Migration note: callers no longer run a separate `atlassian/gajira-login` step — instead pass
+> the three variables above as `env:` on the `gh-action_jira-create` step.
 
 ## Usage
 
@@ -16,7 +38,11 @@ Create Jira ticket
 
 ```yaml
 steps:
-  - uses: SonarSource/gh-action_jira-create@0.0.1 <--- replace with the last tag
+  - uses: SonarSource/gh-action_jira-create@0.0.1 # <--- replace with the last tag
+    env:
+      JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+      JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+      JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
     with:
       project: <Jira project key>
       issuetype: <Task, ...>
@@ -28,7 +54,11 @@ steps:
 
 ```yaml
 steps:
-  - uses: SonarSource/gh-action_jira-create@0.0.1 <--- replace with the last tag
+  - uses: SonarSource/gh-action_jira-create@0.0.1 # <--- replace with the last tag
+    env:
+      JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+      JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+      JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
     with:
       project: <Jira project key>
       issuetype: <Task, ...>
