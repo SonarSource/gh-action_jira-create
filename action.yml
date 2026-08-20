@@ -31,10 +31,83 @@ runs:
         mode: md2jira
     - name: Create Jira issue
       id: create
-      uses: atlassian/gajira-create@1ff0b6bd115a780592b47bfbb63fc4629132e6ec # v3
-      with:
-        project: ${{ inputs.project }}
-        issuetype: ${{ inputs.issuetype }}
-        summary: ${{ inputs.summary }}
-        description: ${{ steps.md2jira.outputs.output-text }}
-        fields: ${{ inputs.fields }}
+      shell: bash
+      env:
+        INPUT_PROJECT: ${{ inputs.project }}
+        INPUT_ISSUETYPE: ${{ inputs.issuetype }}
+        INPUT_SUMMARY: ${{ inputs.summary }}
+        INPUT_DESCRIPTION: ${{ steps.md2jira.outputs.output-text }}
+        INPUT_FIELDS: ${{ inputs.fields }}
+      run: |
+        set -euo pipefail
+
+        if [[ -z "${JIRA_BASE_URL:-}${JIRA_USER_EMAIL:-}${JIRA_API_TOKEN:-}" ]]; then
+          jira_config="$HOME/jira/config.yml"
+          if [[ -f "$jira_config" ]]; then
+            read_jira_config_value() {
+              awk -v key="$1" '
+                $0 ~ "^" key ":" {
+                  value = substr($0, index($0, ":") + 1)
+                  sub(/^[[:space:]]*/, "", value)
+                  sub(/[[:space:]]*$/, "", value)
+                  if (value ~ /^".*"$/ || value ~ /^'\''.*'\''$/) {
+                    value = substr(value, 2, length(value) - 2)
+                  }
+                  print value
+                  exit
+                }
+              ' "$jira_config"
+            }
+
+            JIRA_BASE_URL="$(read_jira_config_value baseUrl)"
+            JIRA_USER_EMAIL="$(read_jira_config_value email)"
+            JIRA_API_TOKEN="$(read_jira_config_value token)"
+          fi
+        fi
+
+        for variable in JIRA_BASE_URL JIRA_USER_EMAIL JIRA_API_TOKEN; do
+          if [[ -z "${!variable:-}" ]]; then
+            echo "::error::${variable} must be set by Jira Login or the environment."
+            exit 1
+          fi
+        done
+
+        extra_fields="${INPUT_FIELDS:-}"
+        if [[ -z "$extra_fields" ]]; then
+          extra_fields='{}'
+        fi
+        if ! jq -e 'type == "object"' >/dev/null <<<"$extra_fields"; then
+          echo "::error::The fields input must be a JSON object."
+          exit 1
+        fi
+
+        payload="$(
+          jq -cn \
+            --arg project "$INPUT_PROJECT" \
+            --arg issuetype "$INPUT_ISSUETYPE" \
+            --arg summary "$INPUT_SUMMARY" \
+            --arg description "$INPUT_DESCRIPTION" \
+            --argjson extra_fields "$extra_fields" \
+            '{
+              fields: (
+                $extra_fields
+                + {
+                  project: {key: $project},
+                  issuetype: {name: $issuetype},
+                  summary: $summary
+                }
+                + if $description == "" then {} else {description: $description} end
+              )
+            }'
+        )"
+
+        response="$(
+          curl --fail-with-body --silent --show-error \
+            --user "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" \
+            --header 'Accept: application/json' \
+            --header 'Content-Type: application/json' \
+            --data "$payload" \
+            "${JIRA_BASE_URL%/}/rest/api/2/issue"
+        )"
+        issue_key="$(jq -er '.key' <<<"$response")"
+        echo "issue=$issue_key" >> "$GITHUB_OUTPUT"

@@ -7,8 +7,8 @@
 Create Jira ticket
 
 > Note
-> This is a wrapper for GitHub action [atlassian/gajira-create](https://github.com/atlassian/gajira-create?tab=readme-ov-file)
-> with some extra features such as Markdown support for issue description.
+> This action uses the existing Jira Login configuration and supports Markdown
+> conversion for issue descriptions.
 
 ## Usage
 
