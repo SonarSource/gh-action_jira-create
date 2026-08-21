@@ -10,6 +10,15 @@ Create Jira ticket
 > This action uses the existing Jira Login configuration and supports Markdown
 > conversion for issue descriptions.
 
+## Requirements
+
+Provide Jira credentials either through the Jira Login configuration file at
+`$HOME/jira/config.yml` (`baseUrl`, `email`, and `token`) or through the
+`JIRA_BASE_URL`, `JIRA_USER_EMAIL`, and `JIRA_API_TOKEN` environment variables.
+
+The action runs with `bash`, `curl`, and `jq`, which are available on GitHub-hosted
+Linux runners.
+
 ## Usage
 
 ### Create a simple Jira issue using Markdown

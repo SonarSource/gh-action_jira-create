@@ -22,13 +22,22 @@ jobs:
             operations/team/re/kv/data/jira-sandbox user | jira_user;
             operations/team/re/kv/data/jira-sandbox password | jira_password;
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Given the gh-action is used with only required inputs
-        id: test-data
-        uses: ./
+      - name: Configure Jira Login credentials
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/jira"
+          {
+            printf 'baseUrl: "%s"\n' "$JIRA_BASE_URL"
+            printf 'email: "%s"\n' "$JIRA_USER_EMAIL"
+            printf 'token: "%s"\n' "$JIRA_API_TOKEN"
+          } > "$HOME/jira/config.yml"
         env:
           JIRA_BASE_URL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_url }}
           JIRA_USER_EMAIL: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_user }}
           JIRA_API_TOKEN: ${{ fromJSON(steps.vault-jira-sandbox-secrets.outputs.vault).jira_password }}
+      - name: Given the gh-action is used with only required inputs
+        id: test-data
+        uses: ./
         with:
           project: "BUILD"
           issuetype: "Feature"
