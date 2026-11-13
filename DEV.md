@@ -25,7 +25,18 @@ The job called `it-tests` declares a list of needs:
     ...
     needs:
        ...
-      - it-tests-output-logs-failure
-      - it-tests-output-logs-success
+      - offline-tests
+      - it-tests-use-only-required-input-values
+      - it-tests-check-all-inputs
+      - it-tests-description-markdown-to-jira-markup-conversion
       - < your new test > <-------------- Add your tests here
 ```
+
+## Local checks
+
+Run `python3 -m unittest discover -s tests -v` for the offline REST contract tests.
+The fake curl executable checks request payloads, credential isolation and temporary-file cleanup.
+Run `pre-commit run --all-files` for formatting and workflow validation.
+The three sandbox integration jobs require Vault access in GitHub Actions.
+Each job retrieves the created issue and attempts resolution and closure even if an assertion fails.
+Cleanup polls for each target status and fails if Jira does not confirm the transition.
