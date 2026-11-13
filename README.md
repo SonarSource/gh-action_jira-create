@@ -6,9 +6,24 @@
 
 Create Jira ticket
 
-> Note
-> This is a wrapper for GitHub action [atlassian/gajira-create](https://github.com/atlassian/gajira-create?tab=readme-ov-file)
-> with some extra features such as Markdown support for issue description.
+Create issues through Jira Cloud REST API v2. Markdown descriptions are converted to Jira markup.
+
+## Requirements and authentication
+
+The runner must provide Bash, Python 3 and curl. No Python packages are required.
+Provide `JIRA_BASE_URL`, `JIRA_USER_EMAIL` and `JIRA_API_TOKEN` through the step environment.
+The base URL must use HTTPS and must not contain credentials, a query or a fragment.
+Custom Jira hosts and context paths are supported.
+
+For workflows that already use Jira Login, the action also reads `$HOME/jira/config.yml`.
+It accepts the `baseUrl`, `email` and `token` scalar values written by Jira Login,
+including plain, single-quoted and JSON-compatible double-quoted strings.
+Each environment value takes precedence independently. Missing values fall back to the file.
+YAML tags, aliases, collections and multiline credential values are not supported.
+Do not print the configuration or commit credentials.
+
+The action does not follow HTTP redirects or automatically retry issue creation.
+If a request fails after Jira receives it, check Jira before retrying to avoid duplicate issues.
 
 ## Usage
 
@@ -16,7 +31,11 @@ Create Jira ticket
 
 ```yaml
 steps:
-  - uses: SonarSource/gh-action_jira-create@0.0.1 <--- replace with the last tag
+  - uses: SonarSource/gh-action_jira-create@0.0.1 # Replace with the latest tag
+    env:
+      JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
+      JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+      JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
     with:
       project: <Jira project key>
       issuetype: <Task, ...>
@@ -28,7 +47,11 @@ steps:
 
 ```yaml
 steps:
-  - uses: SonarSource/gh-action_jira-create@0.0.1 <--- replace with the last tag
+  - uses: SonarSource/gh-action_jira-create@0.0.1 # Replace with the latest tag
+    env:
+      JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
+      JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+      JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
     with:
       project: <Jira project key>
       issuetype: <Task, ...>
@@ -49,6 +72,10 @@ steps:
 | `summary`     | Summary (= title) of the Jira issue                   | yes      |
 | `description` | Description of the Jira issue (Markdown is supported) | no       |
 | `fields`      | Allow to define some extra fields such as `priority`  | no       |
+
+The `fields` input must be a JSON object. It must not contain `project`, `issuetype`,
+`summary` or `description`. Use the named inputs for these values. Conflicts fail before
+the action sends a request.
 
 ## Outputs
 
